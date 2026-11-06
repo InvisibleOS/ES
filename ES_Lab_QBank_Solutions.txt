@@ -3,11 +3,21 @@
         Target : ARM7TDMI (LPC2148) | Tool : Keil uVision (armasm / C)
 ================================================================================
 
+  LANGUAGE & FILE TYPE CLASSIFICATION:
+  ------------------------------------
+  * ASSEMBLY LANGUAGE (.s / .asm) - 18 Questions:
+      - Software (Optimised): Q1, Q3, Q5, Q7, Q9, Q11, Q13, Q15, Q17, Q19
+      - Hardware (Exact copy): Q2, Q4, Q6, Q8, Q10, Q12, Q14, Q18
+  * EMBEDDED C (.c) - 2 Questions:
+      - Hardware (Exact copy): Q16, Q20
+
+  METHODOLOGY:
+  ------------
   * Software-only (simulation) questions -> OPTIMISED versions of the manual's
     programs (fewer instructions, fewer memory accesses, LDM/STM block
     transfers, free barrel-shifter operands, conditional execution).
   * Hardware questions -> code copied EXACTLY as it appears in the lab manual
-    (ES_NewManual.docx). Any notes are written OUTSIDE the code block.
+    (ES_NewManual.docx). Any notes/fixes are written OUTSIDE the code block.
 
 ================================================================================
                          PART A : QUESTION BANK
@@ -62,7 +72,7 @@
 
 
 --------------------------------------------------------------------------------
-Q1. Read data from memory and write data to memory               [SOFTWARE]
+Q1. Read data from memory and write data to memory     [ASM / .s] [SOFTWARE]
     Manual ref: Expt 1, Prog 3 - OPTIMISED
 --------------------------------------------------------------------------------
 Optimisations vs manual:
@@ -101,7 +111,7 @@ SRC     DCD     0xAABBCCDD, 0xABCDEF78, 0x11223344
 
 
 --------------------------------------------------------------------------------
-Q2. Ring count on P0.16-P0.23 LEDs (Active low)                  [HARDWARE]
+Q2. Ring count on P0.16-P0.23 LEDs (Active low)        [ASM / .s] [HARDWARE]
     Manual ref: Expt 4, Prog 1 - COPIED AS IS
 --------------------------------------------------------------------------------
 
@@ -131,7 +141,7 @@ delay   SUBS r5, r5, #1
 
 
 --------------------------------------------------------------------------------
-Q3. Check whether the number is even or odd                      [SOFTWARE]
+Q3. Check whether the number is even or odd            [ASM / .s] [SOFTWARE]
     Manual ref: Expt 2, Prog 1 - OPTIMISED
 --------------------------------------------------------------------------------
 Optimisations / fixes vs manual:
@@ -163,7 +173,7 @@ Result: NUM = 0x1B (odd)  -> R1 = 1, R2 = [0x40000000] = 0x55555555
 
 
 --------------------------------------------------------------------------------
-Q4. Interface Buzzer                                              [HARDWARE]
+Q4. Interface Buzzer                                   [ASM / .s] [HARDWARE]
     Manual ref: Expt 4, Prog 3 - COPIED AS IS
 --------------------------------------------------------------------------------
 
@@ -192,7 +202,7 @@ delay1  SUBS R4,R4,#1
 
 
 --------------------------------------------------------------------------------
-Q5. Data transfer with shift/rotate                               [SOFTWARE]
+Q5. Data transfer with shift/rotate                    [ASM / .s] [SOFTWARE]
     Manual ref: Expt 1, Prog 5 - OPTIMISED
 --------------------------------------------------------------------------------
 Optimisations vs manual:
@@ -228,7 +238,7 @@ Result (from 0x40000000):
 
 
 --------------------------------------------------------------------------------
-Q6. Interface relay (P0.10)                                       [HARDWARE]
+Q6. Interface relay (P0.10)                            [ASM / .s] [HARDWARE]
     Manual ref: Expt 4, Prog 4 - COPIED AS IS
 --------------------------------------------------------------------------------
 
@@ -257,7 +267,7 @@ delay1  SUBS R4,R4,#1
 
 
 --------------------------------------------------------------------------------
-Q7. Add two 16-bit numbers                                        [SOFTWARE]
+Q7. Add two 16-bit numbers                             [ASM / .s] [SOFTWARE]
     Manual ref: Expt 3, Prog 2 - OPTIMISED
 --------------------------------------------------------------------------------
 Optimisations vs manual:
@@ -287,7 +297,7 @@ Result: R0 = [0x40000000] = 0x0000CCCC
 
 
 --------------------------------------------------------------------------------
-Q8. Rotate stepper motor anticlockwise                            [HARDWARE]
+Q8. Rotate stepper motor anticlockwise                 [ASM / .s] [HARDWARE]
     Manual ref: Expt 5, Prog 1 - COPIED AS IS
 --------------------------------------------------------------------------------
 
@@ -323,7 +333,7 @@ delay   SUBS R4,R4,#1;
 
 
 --------------------------------------------------------------------------------
-Q9. Arithmetic instructions: Addition, Subtraction, Bit complement [SOFTWARE]
+Q9. Arithmetic instructions: Addition, Subtraction...  [ASM / .s] [SOFTWARE]
     Manual ref: Expt 3, Prog 1 - OPTIMISED
 --------------------------------------------------------------------------------
 Optimisations vs manual:
@@ -363,7 +373,7 @@ Result (from 0x40000000):
 
 
 --------------------------------------------------------------------------------
-Q10. Interface Seven Segment Display                              [HARDWARE]
+Q10. Interface Seven Segment Display                   [ASM / .s] [HARDWARE]
      Manual ref: Expt 6, Prog 1 - COPIED AS IS (+ missing header/END added)
 --------------------------------------------------------------------------------
 
@@ -418,7 +428,7 @@ delay   SUBS r5, r5, #1
 
 
 --------------------------------------------------------------------------------
-Q11. Logical operations                                           [SOFTWARE]
+Q11. Logical operations                                [ASM / .s] [SOFTWARE]
      Manual ref: Expt 2, Prog 2 - OPTIMISED
 --------------------------------------------------------------------------------
 Optimisations vs manual:
@@ -452,7 +462,7 @@ Result (from 0x40000000):
 
 
 --------------------------------------------------------------------------------
-Q12. Interface switch circuit and LEDs                            [HARDWARE]
+Q12. Interface switch circuit and LEDs                 [ASM / .s] [HARDWARE]
      Manual ref: Expt 4, Prog 2 - COPIED AS IS
 --------------------------------------------------------------------------------
 
@@ -486,7 +496,7 @@ repeat  LDR R5,[R4]      ;READ A SWITCH
 
 
 --------------------------------------------------------------------------------
-Q13. Add two 16-bit numbers                    (same as Q7)       [SOFTWARE]
+Q13. Add two 16-bit numbers                    (same as Q7) [ASM / .s] [SOFTWARE]
      Manual ref: Expt 3, Prog 2 - OPTIMISED
 --------------------------------------------------------------------------------
 Optimisations vs manual: ONE word load fetches both numbers; no MASK, no AND,
@@ -513,7 +523,7 @@ Result: R0 = [0x40000000] = 0x0000CCCC
 
 
 --------------------------------------------------------------------------------
-Q14. External DAC - square waveform                               [HARDWARE]
+Q14. External DAC - square waveform                    [ASM / .s] [HARDWARE]
      Manual ref: Expt 7, Prog 1 - COPIED AS IS
 --------------------------------------------------------------------------------
 
@@ -541,8 +551,8 @@ up      SUBS R5,R5,#1;
 
 
 --------------------------------------------------------------------------------
-Q15. Arithmetic instructions: Addition, Subtraction, Bit complement
-                                               (same as Q9)       [SOFTWARE]
+Q15. Arithmetic instructions: Addition, Subtraction...
+                                               (same as Q9) [ASM / .s] [SOFTWARE]
      Manual ref: Expt 3, Prog 1 - OPTIMISED
 --------------------------------------------------------------------------------
 Optimisations vs manual: ONE LDMIA for operands, ONE STMIA for all 8 results,
@@ -578,7 +588,7 @@ Result (from 0x40000000):
 
 
 --------------------------------------------------------------------------------
-Q16. C program - up count with delay on LEDs using Timer          [HARDWARE]
+Q16. C program - up count with delay on LEDs (Timer)       [C / .c] [HARDWARE]
      Manual ref: Expt 9, Prog 1 - COPIED AS IS
 --------------------------------------------------------------------------------
 
@@ -613,7 +623,7 @@ void delay(void)
 
 
 --------------------------------------------------------------------------------
-Q17. Data transfer with shift/rotate            (same as Q5)      [SOFTWARE]
+Q17. Data transfer with shift/rotate            (same as Q5) [ASM / .s] [SOFTWARE]
      Manual ref: Expt 1, Prog 5 - OPTIMISED
 --------------------------------------------------------------------------------
 Optimisations vs manual: every shift/rotate done by the barrel shifter in one
@@ -645,7 +655,7 @@ Result (from 0x40000000):
 
 
 --------------------------------------------------------------------------------
-Q18. Internal DAC (10-bit) - ramp waveform                        [HARDWARE]
+Q18. Internal DAC (10-bit) - ramp waveform             [ASM / .s] [HARDWARE]
      Manual ref: Expt 7, Prog 2 - COPIED AS IS
 --------------------------------------------------------------------------------
 
@@ -667,7 +677,7 @@ BACK    MOV R4, R3,LSL#6
 
 
 --------------------------------------------------------------------------------
-Q19. Check whether the number is even or odd    (same as Q3)      [SOFTWARE]
+Q19. Check whether the number is even or odd    (same as Q3) [ASM / .s] [SOFTWARE]
      Manual ref: Expt 2, Prog 1 - OPTIMISED
 --------------------------------------------------------------------------------
 Optimisations / fixes vs manual: one ANDS tests the LSB and sets Z; MVNEQ makes
@@ -694,7 +704,7 @@ Result: NUM = 0x1B (odd)  -> R1 = 1, R2 = [0x40000000] = 0x55555555
 
 
 --------------------------------------------------------------------------------
-Q20. C program - LED ON/OFF using External Hardware Interrupt 1   [HARDWARE]
+Q20. C program - LED ON/OFF (Ext Interrupt 1)              [C / .c] [HARDWARE]
      Manual ref: Expt 10, Prog 1 - COPIED AS IS
 --------------------------------------------------------------------------------
 
