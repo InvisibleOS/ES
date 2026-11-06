@@ -1,0 +1,733 @@
+================================================================================
+        EMBEDDED SYSTEMS LAB (ECM_3143) - QUESTION BANK WITH SOLUTIONS
+        Target : ARM7TDMI (LPC2148) | Tool : Keil uVision (armasm / C)
+================================================================================
+
+  * Software-only (simulation) questions -> OPTIMISED versions of the manual's
+    programs (fewer instructions, fewer memory accesses, LDM/STM block
+    transfers, free barrel-shifter operands, conditional execution).
+  * Hardware questions -> code copied EXACTLY as it appears in the lab manual
+    (ES_NewManual.docx). Any notes are written OUTSIDE the code block.
+
+================================================================================
+                         PART A : QUESTION BANK
+================================================================================
+
+1.  Write an assembly level program to read data from the memory and write data
+    to memory.
+2.  Write a program to display ring count on (P0.16-P0.23 pins) LEDs (Active
+    low). Implement in hardware.
+3.  Write an assembly level program to check whether the number is even or odd.
+4.  Write a program to interface Buzzer and implement in hardware.
+5.  Write an assembly level program on data transfer with shift/rotate. Take a
+    number from memory, do the operation and store the result in a memory
+    location.
+6.  Write a program to interface relay (P0.10 pin is connected to relay).
+    Implement in hardware.
+7.  Write an assembly level program to add two 16-bit numbers.
+8.  Write a program to rotate stepper motor anticlockwise direction. Implement
+    in hardware.
+9.  Write an assembly level program with different arithmetic instructions like
+    Addition, Subtraction, Bit compliment. Store the results at a memory
+    location.
+10. Write a program to interface a Seven Segment Display. Implement in hardware.
+11. Write an assembly level program to do logical operations. Take a number
+    stored in a memory location, perform the logical operations and store the
+    result in a memory location.
+12. Write a Program to interface switch circuit and LEDs. Implement in hardware.
+13. Write an assembly level program to add two 16-bit numbers.
+14. Program to interface external DAC to generate a square waveform. Implement
+    in hardware and observe the waveform.
+15. Write an assembly level program with different arithmetic instructions like
+    Addition, Subtraction, Bit compliment. Store the results at a memory
+    location.
+16. Write a C program to display up count with a delay on LED display unit using
+    Timer. Implement in hardware and observe the waveform.
+17. Write an assembly level program on data transfer with shift/rotate. Take a
+    number from memory, do the operation and store the result in a memory
+    location.
+18. Programming internal DAC to generate a ramp waveform using internal DAC
+    (10 bit).
+19. Write an assembly level program to check whether the number is even or odd.
+20. Write a C-program to turn on or off the LED based on the external hardware
+    interrupt1.
+
+  (Duplicates in the bank: Q13 = Q7, Q15 = Q9, Q17 = Q5, Q19 = Q3.
+   Full code is repeated under each so every answer is self-contained.)
+
+
+================================================================================
+                           PART B : SOLUTIONS
+================================================================================
+
+
+--------------------------------------------------------------------------------
+Q1. Read data from memory and write data to memory               [SOFTWARE]
+    Manual ref: Expt 1, Prog 3 - OPTIMISED
+--------------------------------------------------------------------------------
+Optimisations vs manual:
+  - Unused/dead code removed (VALU, R/T, register-offset load, etc.).
+  - Post-indexed stores (STR Rx,[R4],#4) update the pointer for free, so no
+    separate offsets/ADD instructions are needed.
+  - ADR (PC-relative) used for source -> no literal-pool load.
+
+        AREA    RWMEM, CODE, READONLY
+        ENTRY
+        ADR     R0, SRC             ; R0 -> source data in code memory
+        LDR     R4, =RES            ; R4 -> destination in data memory (0x40000000)
+        LDR     R1, [R0]            ; read WORD       -> R1 = 0xAABBCCDD
+        LDRB    R2, [R0]            ; read BYTE       -> R2 = 0x000000DD
+        LDRH    R3, [R0]            ; read HALF-WORD  -> R3 = 0x0000CCDD
+        STR     R1, [R4], #4        ; write word,  then R4 = R4 + 4
+        STRB    R2, [R4], #4        ; write byte,  then R4 = R4 + 4
+        STRH    R3, [R4]            ; write half-word
+STOP    B       STOP
+SRC     DCD     0xAABBCCDD
+
+        AREA    DATAMEM, DATA, READWRITE
+RES     SPACE   12                  ; 3 words reserved at 0x40000000
+        END
+
+Result (memory window @ 0x40000000):
+  0x40000000 = 0xAABBCCDD, 0x40000004 = 0xDD, 0x40000008 = 0xCCDD
+
+Fastest alternative (pure block copy - 2 instructions move 3 words):
+        ADR     R0, SRC
+        LDR     R4, =RES
+        LDMIA   R0, {R1-R3}         ; read 3 words in ONE instruction
+        STMIA   R4, {R1-R3}         ; write 3 words in ONE instruction
+STOP    B       STOP
+SRC     DCD     0xAABBCCDD, 0xABCDEF78, 0x11223344
+
+
+--------------------------------------------------------------------------------
+Q2. Ring count on P0.16-P0.23 LEDs (Active low)                  [HARDWARE]
+    Manual ref: Expt 4, Prog 1 - COPIED AS IS
+--------------------------------------------------------------------------------
+
+IO0DIR EQU 0xE0028008 ;Address for configuring Port0 as I/O
+IO0SET EQU 0xE0028004 ;Register address for setting Port0 pins
+IO0CLR EQU 0xE002800C ;Register address for clearing Port0 pins
+    AREA CHANG, CODE,READONLY
+    EXPORT __main  ;refer the line no 416 of startup.s file
+__main
+    ENTRY
+        LDR r1,=IO0DIR ; load the address of the IODIR reg to R1
+        LDR r0,=0x00FF0000; To set pins P0.16 to P0.23 as output pins
+        STR r0,[r1]        ;This configure P0.16 to P0.23 as output pins
+        LDR r2,=IO0CLR ; load the address of the IOCLR reg to R2
+        LDR r3,=IO0SET ; load the address of the IOSET reg to R3
+repeat  MOV r4, #0x00010000 ; write a control word to set one bit
+next    STR r4, [r2]
+        LDR r5, =0x2FFFFF ; Delay program to retain the bit for some time.
+delay   SUBS r5, r5, #1
+        BNE delay
+        STR r0, [r3] ; set all pins
+        MOV r4, r4, LSL #1
+        CMP r4, #0x1000000
+        BNE next
+        B repeat
+        END
+
+
+--------------------------------------------------------------------------------
+Q3. Check whether the number is even or odd                      [SOFTWARE]
+    Manual ref: Expt 2, Prog 1 - OPTIMISED
+--------------------------------------------------------------------------------
+Optimisations / fixes vs manual:
+  - One ANDS tests the LSB directly and sets the Z flag (no shift into carry
+    needed); R1 itself holds the answer (0 = EVEN, 1 = ODD).
+  - MVNEQ #0 makes 0xFFFFFFFF without a literal-pool load.
+  - BUG FIX: the manual's "MOVCS ... ; IF EVEN" is wrong - after LSR #1,
+    Carry = LSB, so CS actually means ODD. This version is correct.
+  - The manual's "MOV R0,#NUMBER" used an undefined symbol; here the number
+    really is read from memory.
+
+        AREA    EVENODD, CODE, READONLY
+        ENTRY
+        LDR     R0, NUM             ; read the number from memory
+        ANDS    R1, R0, #1          ; R1 = LSB : 0 = EVEN, 1 = ODD  (Z=1 if EVEN)
+        MVNEQ   R2, #0              ; EVEN -> R2 = 0xFFFFFFFF
+        LDRNE   R2, =0x55555555     ; ODD  -> R2 = 0x55555555
+        LDR     R3, =RES
+        STR     R2, [R3]            ; result flag stored at 0x40000000
+STOP    B       STOP
+NUM     DCD     0x0000001B          ; number to test (27 -> ODD)
+
+        AREA    DATAMEM, DATA, READWRITE
+RES     DCD     0
+        END
+
+Result: NUM = 0x1B (odd)  -> R1 = 1, R2 = [0x40000000] = 0x55555555
+        NUM = 0x1A (even) -> R1 = 0, R2 = [0x40000000] = 0xFFFFFFFF
+
+
+--------------------------------------------------------------------------------
+Q4. Interface Buzzer                                              [HARDWARE]
+    Manual ref: Expt 4, Prog 3 - COPIED AS IS
+--------------------------------------------------------------------------------
+
+IO0DIR EQU 0xE0028008 ;Address for configuring Port0 as I/O
+IO0SET EQU 0xE0028004 ;Register address for setting Port0 pins
+IO0CLR EQU 0xE002800C ;Register address for clearing Port0 pins
+ AREA CHANG, CODE,READONLY
+    EXPORT __main  ;refer the line no 416 of startup.s file
+__main
+    ENTRY
+        LDR r1,=IO0DIR ; load the address of the IODIR reg to R1
+        LDR r0,=0x200; To set P0.9 as output pin for buzzer
+        STR r0,[r1]        ;This configures P0.9 as output pin
+        LDR r2,=IO0CLR ; load the address of the IOCLR reg to R2
+        LDR r3,=IO0SET ; load the address of the IOSET reg to R3
+S       STR R0,[R3]
+        LDR R4,=0x2FF; Keep varying this value and hear the buzzer
+delay   SUBS R4,R4,#1
+        BNE delay
+        STR R0,[R2]
+        LDR R4,=0x2FFFF;Keep varying this value
+delay1  SUBS R4,R4,#1
+        BNE delay1
+        B  S
+        END
+
+
+--------------------------------------------------------------------------------
+Q5. Data transfer with shift/rotate                               [SOFTWARE]
+    Manual ref: Expt 1, Prog 5 - OPTIMISED
+--------------------------------------------------------------------------------
+Optimisations vs manual:
+  - Every shift/rotate is done by the barrel shifter inside a single MOV.
+  - ROL (not available on ARM) is done as ROR #(32-n)  -> answers the manual's
+    "Can rotate left be used?" note.
+  - MOVS on LSR captures bit0 into Carry so the RRX result is deterministic.
+  - All 7 values (original + 6 results) written by ONE STMIA instead of
+    separate stores.
+
+        AREA    SHIFTROT, CODE, READONLY
+        ENTRY
+        LDR     R0, NUM             ; take the number from memory
+        LDR     R8, =RES            ; R8 -> result block (0x40000000)
+        MOV     R1, R0, LSL #2      ; LSL #2 : R0 * 4
+        MOVS    R2, R0, LSR #1      ; LSR #1 : R0 / 2 (unsigned), C = bit0 of R0
+        MOV     R3, R0, ASR #1      ; ASR #1 : R0 / 2 (signed, sign preserved)
+        MOV     R4, R0, ROR #4      ; ROR #4 : rotate right by 4
+        MOV     R5, R0, ROR #28     ; ROL #4 : rotate LEFT by 4 (= ROR #28)
+        MOV     R6, R0, RRX         ; RRX    : rotate right 1 bit through Carry
+        STMIA   R8, {R0-R6}         ; store original + 6 results, ONE instruction
+STOP    B       STOP
+NUM     DCD     0x8000001F
+
+        AREA    DATAMEM, DATA, READWRITE
+RES     SPACE   28                  ; 7 words at 0x40000000
+        END
+
+Result (from 0x40000000):
+  0x8000001F (original), 0x0000007C (LSL#2), 0x4000000F (LSR#1),
+  0xC000000F (ASR#1),    0xF8000001 (ROR#4), 0x000001F8 (ROL#4),
+  0xC000000F (RRX, C=1)
+
+
+--------------------------------------------------------------------------------
+Q6. Interface relay (P0.10)                                       [HARDWARE]
+    Manual ref: Expt 4, Prog 4 - COPIED AS IS
+--------------------------------------------------------------------------------
+
+IO0DIR EQU 0xE0028008 ;Address for configuring Port0 as I/O
+IO0SET EQU 0xE0028004 ;Register address for setting Port0 pins
+IO0CLR EQU 0xE002800C ;Register address for clearing Port0 pins
+ AREA CHANG, CODE,READONLY
+    EXPORT __main  ;refer the line no 416 of startup.s file
+__main
+    ENTRY
+        LDR r1,=IO0DIR ; load the address of the IODIR reg to R1
+        LDR r0,=0x400; To set P0.10 as output pin for relay
+        STR r0,[r1]        ;This configure P0.10 as output pin
+        LDR r2,=IO0CLR ; load the address of the IOCLR reg to R2
+        LDR r3,=IO0SET ; load the address of the IOSET reg to R3
+BACK    STR R0,[R2]     ; Relay Open (Turn off LED)
+        LDR R4,=0x2FFFFF
+delay   SUBS R4,R4,#1
+        BNE delay
+        STR R0,[R3]         ;Relay Closed (Turn on LED)
+        LDR R4,=0x5FFFF
+delay1  SUBS R4,R4,#1
+        BNE delay1
+        B BACK
+        END
+
+
+--------------------------------------------------------------------------------
+Q7. Add two 16-bit numbers                                        [SOFTWARE]
+    Manual ref: Expt 3, Prog 2 - OPTIMISED
+--------------------------------------------------------------------------------
+Optimisations vs manual:
+  - ONE word load fetches BOTH 16-bit numbers (manual: 3 loads incl. MASK).
+  - No MASK constant, no "MOV R0,#0", no AND instructions.
+  - VALUE2 is extracted for free by the barrel shifter inside the ADD.
+  - The 17th bit (carry) is preserved in bit16 of the result.
+
+        AREA    ADD16, CODE, READONLY
+        ENTRY
+        LDR     R1, VALUES          ; R1 = 0x2222AAAA  (VALUE2:VALUE1)
+        MOV     R2, R1, LSL #16     ; drop VALUE2 bits
+        MOV     R2, R2, LSR #16     ; R2 = VALUE1 = 0x0000AAAA
+        ADD     R0, R2, R1, LSR #16 ; R0 = VALUE1 + VALUE2
+        LDR     R4, =RESULT
+        STR     R0, [R4]            ; store result at 0x40000000
+STOP    B       STOP
+        ALIGN
+VALUES  DCW     0xAAAA              ; VALUE1
+        DCW     0x2222              ; VALUE2
+
+        AREA    DATA2, DATA, READWRITE
+RESULT  DCD     0
+        END
+
+Result: R0 = [0x40000000] = 0x0000CCCC
+
+
+--------------------------------------------------------------------------------
+Q8. Rotate stepper motor anticlockwise                            [HARDWARE]
+    Manual ref: Expt 5, Prog 1 - COPIED AS IS
+--------------------------------------------------------------------------------
+
+IO0DIR EQU 0xE0028008 ;Address for configuring Port0 as I/O
+IO0SET EQU 0xE0028004 ;Register address for setting Port0 pins
+IO0CLR EQU 0xE002800C ;Register address for clearing Port0 pins
+ AREA CHANG, CODE,READONLY
+    EXPORT __main  ;refer the line no 416 of startup.s file
+__main
+    ENTRY
+        LDR r1,=IO0DIR ; load the address of the IODIR reg to R1
+        LDR r0,=0xF000; To set P0.9 as output pin for buzzer
+        STR r0,[r1]        ;This configure P0.12-P0.15 as output pins
+        LDR r2,=IO0CLR ; load the address of the IOCLR reg to R2
+        LDR r3,=IO0SET ; load the address of the IOSET reg to R3
+S       LDR R5,=0X8000 ; Energise single coil at a time
+BACK    STR R0,[R3]     ; Set all 4 pins to 1 to turnoff motor
+        STR R5,[R2]     ; Clears one bit at a time to enable a coil(Active low)
+        LDR R4,=0x2FFF; Keep varying this value for different speed
+delay   SUBS R4,R4,#1;
+        BNE delay
+        MOV R5,R5,LSR #1; shift for energising next coil
+; [MODIFIED] '#' added before 0X800 (immediate operand).
+; If this doesn't work, refer to the original manual line:
+;       CMP R5,0X800    ; Are all coils energised?
+        CMP R5,#0X800   ; Are all coils energised?
+        BNE BACK
+        B S
+        END
+
+[Note (not part of the code): the only change from the manual is the '#' in
+ the CMP line, marked [MODIFIED] above. Everything else is copied as is.]
+
+
+--------------------------------------------------------------------------------
+Q9. Arithmetic instructions: Addition, Subtraction, Bit complement [SOFTWARE]
+    Manual ref: Expt 3, Prog 1 - OPTIMISED
+--------------------------------------------------------------------------------
+Optimisations vs manual:
+  - Both operands loaded with ONE LDMIA (manual: 2 separate LDRs).
+  - Results kept in separate registers and written with ONE STMIA
+    (manual: 7 separate STR instructions with write-back).
+  - ADDS/SUBS set the Carry so ADC/SBC/RSC actually use a meaningful carry.
+  - MVN added for a true bit complement (1's complement); BIC kept as in manual.
+
+        AREA    ARITH, CODE, READONLY
+        ENTRY
+        ADR     R0, NUM1
+        LDMIA   R0, {R1, R2}        ; R1 = NUM1, R2 = NUM2 (one instruction)
+        LDR     R0, =RES            ; R0 -> result block (0x40000000)
+        ADDS    R3, R1, R2          ; R3  = R1 + R2          (sets C)
+        ADC     R4, R1, R2          ; R4  = R1 + R2 + C
+        SUBS    R5, R1, R2          ; R5  = R1 - R2          (sets C = NOT borrow)
+        SBC     R6, R1, R2          ; R6  = R1 - R2 + C - 1
+        RSB     R7, R1, R2          ; R7  = R2 - R1
+        RSC     R8, R1, R2          ; R8  = R2 - R1 + C - 1
+        BIC     R9, R1, R2          ; R9  = R1 AND (NOT R2)  (bit clear)
+        MVN     R10, R1             ; R10 = NOT R1           (bit complement)
+        STMIA   R0, {R3-R10}        ; store all 8 results, ONE instruction
+STOP    B       STOP
+NUM1    DCD     0xF7654321
+NUM2    DCD     0xF2345678
+
+        AREA    DATAMEM, DATA, READWRITE
+RES     SPACE   32                  ; 8 words at 0x40000000
+        END
+
+Result (from 0x40000000):
+  ADD = 0xE9999999 (C=1)   ADC = 0xE999999A
+  SUB = 0x0530ECA9 (C=1)   SBC = 0x0530ECA9
+  RSB = 0xFACF1357         RSC = 0xFACF1357
+  BIC = 0x05410101         MVN = 0x089ABCDE
+
+
+--------------------------------------------------------------------------------
+Q10. Interface Seven Segment Display                              [HARDWARE]
+     Manual ref: Expt 6, Prog 1 - COPIED AS IS (+ missing header/END added)
+--------------------------------------------------------------------------------
+
+; [ADDED] Lines below (up to __main) are NOT in the manual's screenshot
+; (it starts at line 09). Standard GPIO header taken from the other
+; GPIO programs of the manual. If this doesn't work, refer to the original;
+; the original manual listing begins directly with the line:
+;     ENTRY
+IO0DIR EQU 0xE0028008 ;Address for configuring Port0 as I/O
+IO0SET EQU 0xE0028004 ;Register address for setting Port0 pins
+IO0CLR EQU 0xE002800C ;Register address for clearing Port0 pins
+ AREA CHANG, CODE,READONLY
+    EXPORT __main  ;refer the line no 416 of startup.s file
+__main
+; [END OF ADDED HEADER] --- original manual code starts below ---
+    ENTRY
+        LDR r1,=IO0DIR ; load the address of the IODIR reg to R1
+        LDR r0,=0xF0FF0000;  pins P0.16 to P0.23 and P0.28-P0.31 as output pins
+        STR r0,[r1]        ;This configure P0.16 to P0.23 as output pins
+        LDR r2,=IO0SET  ; load the address of the IOCLR reg to R2
+        LDR r3,=IO0CLR   ; load the address of th
+S       STR R0,[R3]      ; Turn off display
+        LDR R1,=0X803F0000 ; To display 0 on rightmost segment
+        STR R1,[R2]
+        BL  DELAY
+        STR R0,[R3]      ; Turn off display
+        LDR R1,=0X40060000;To display 1 on third segment
+        STR R1,[R2]
+        BL  DELAY
+        STR R0,[R3]      ; Turn off display
+        LDR R1,=0X205B0000;To display 2 on second segment
+        STR R1,[R2]
+        BL  DELAY
+        STR R0,[R3]      ; Turn off display
+        LDR R1,=0X104F0000;To display 3 on leftmost segment
+        STR R1,[R2]
+        BL  DELAY
+        B   S
+DELAY
+        LDR r5, =0x2FF ; Delay program to retain the bit for some time.
+delay   SUBS r5, r5, #1
+        BNE delay
+        BX  LR
+; [ADDED] END directive - not visible in the manual's screenshot, which is
+; cut off after the line:  BX  LR
+; If this doesn't work, refer to the original manual listing.
+        END
+
+[Note (not part of the code): the manual's screenshot of this program starts
+ at line 09 (ENTRY) and is cut off after BX LR. The [ADDED] header and END
+ are the only additions; everything between them is copied as is.]
+
+
+--------------------------------------------------------------------------------
+Q11. Logical operations                                           [SOFTWARE]
+     Manual ref: Expt 2, Prog 2 - OPTIMISED
+--------------------------------------------------------------------------------
+Optimisations vs manual:
+  - Both numbers loaded with ONE LDMIA.
+  - Extra logical ops (BIC, MVN) added at 1 cycle each.
+  - Results actually STORED to memory (the manual left them only in
+    registers) with ONE STMIA.
+
+        AREA    LOGIC, CODE, READONLY
+        ENTRY
+        ADR     R0, NUM1
+        LDMIA   R0, {R1, R2}        ; R1 = NUM1, R2 = NUM2 (one instruction)
+        LDR     R0, =RES            ; R0 -> result block (0x40000000)
+        AND     R3, R1, R2          ; R3 = R1 AND R2
+        ORR     R4, R1, R2          ; R4 = R1 OR  R2
+        EOR     R5, R1, R2          ; R5 = R1 XOR R2
+        BIC     R6, R1, R2          ; R6 = R1 AND (NOT R2)
+        MVN     R7, R1              ; R7 = NOT R1
+        STMIA   R0, {R3-R7}         ; store all 5 results, ONE instruction
+STOP    B       STOP
+NUM1    DCD     0x12345678
+NUM2    DCD     0x0F0F0F0F
+
+        AREA    DATAMEM, DATA, READWRITE
+RES     SPACE   20                  ; 5 words at 0x40000000
+        END
+
+Result (from 0x40000000):
+  AND = 0x02040608, ORR = 0x1F3F5F7F, EOR = 0x1D3B5977,
+  BIC = 0x10305070, MVN = 0xEDCBA987
+
+
+--------------------------------------------------------------------------------
+Q12. Interface switch circuit and LEDs                            [HARDWARE]
+     Manual ref: Expt 4, Prog 2 - COPIED AS IS
+--------------------------------------------------------------------------------
+
+;PROGRAM TO READ FROM PORT1(P1.16-1.23) AND DISPLAY THE SAME ON PORT( P0.16-0.23
+IO0DIR EQU 0xE0028008 ;Address for configuring Port0 as I/O
+IO0SET EQU 0xE0028004 ;Register address for setting Port0 pins
+IO0CLR EQU 0xE002800C ;Register address for clearing Port0 pins
+IO1DIR EQU 0xE0028018 ; UPON RESET CONFIGURED AS INPUT
+IO1PIN EQU 0xE0028010
+ AREA CHANG, CODE,READONLY
+    EXPORT __main  ;refer the line no 416 of startup.s file
+__main
+    ENTRY
+        LDR r1,=IO0DIR ; load the address of the IODIR reg to R1
+        LDR r0,=0x00FF0000; To set pins P0.16 to P0.23 as output pins
+        STR r0,[r1]        ;This configure P0.16 to P0.23 as output pins
+        LDR r2,=IO0CLR ; load the address of the IOCLR reg to R2
+        LDR r3,=IO0SET ; load the address of the IOSET reg to R3
+        LDR R4,=IO1PIN; TO READ INPUT
+        LDR r1,=IO1DIR
+        str R0,[R3]
+repeat  LDR R5,[R4]      ;READ A SWITCH
+        AND R5,#0XFF0000 ; RETAIN ONLY INPUT PORT CONTENT
+        CMP R5,#0XFF0000 ; CHECK IF SWITCH PRESSED
+        BEQ repeat
+        str R0,[R3]      ;IF TRUE TURN-OFF LEDs
+        EOR R5,#0XFF0000;CLEAR THE BIT CORRESPONDIG TO SWITCH PRESSED
+        str R5,[R2]      ; DISPLAY CORRESPONDING LED
+        B repeat
+        END
+
+
+--------------------------------------------------------------------------------
+Q13. Add two 16-bit numbers                    (same as Q7)       [SOFTWARE]
+     Manual ref: Expt 3, Prog 2 - OPTIMISED
+--------------------------------------------------------------------------------
+Optimisations vs manual: ONE word load fetches both numbers; no MASK, no AND,
+no "MOV R0,#0"; VALUE2 extracted for free by the barrel shifter.
+
+        AREA    ADD16, CODE, READONLY
+        ENTRY
+        LDR     R1, VALUES          ; R1 = 0x2222AAAA  (VALUE2:VALUE1)
+        MOV     R2, R1, LSL #16     ; drop VALUE2 bits
+        MOV     R2, R2, LSR #16     ; R2 = VALUE1 = 0x0000AAAA
+        ADD     R0, R2, R1, LSR #16 ; R0 = VALUE1 + VALUE2
+        LDR     R4, =RESULT
+        STR     R0, [R4]            ; store result at 0x40000000
+STOP    B       STOP
+        ALIGN
+VALUES  DCW     0xAAAA              ; VALUE1
+        DCW     0x2222              ; VALUE2
+
+        AREA    DATA2, DATA, READWRITE
+RESULT  DCD     0
+        END
+
+Result: R0 = [0x40000000] = 0x0000CCCC
+
+
+--------------------------------------------------------------------------------
+Q14. External DAC - square waveform                               [HARDWARE]
+     Manual ref: Expt 7, Prog 1 - COPIED AS IS
+--------------------------------------------------------------------------------
+
+ INCLUDE VICVPB.S
+    AREA CHANG, CODE,READONLY
+    EXPORT __main  ;refer the line no 416 of startup.s file
+__main
+    ENTRY
+        LDR r1,=IO0DIR ; load the address of the IODIR reg to R1
+        LDR r0,=0xFF0000;  P0.0 to P0.7 as output
+        STR r0,[r1]        ;This configure P0.0 to P0.7  as output pins
+        LDR r2,=IO0CLR  ; load the address of the IOCLR reg to R2
+        LDR r3,=IO0SET   ;
+BACK    STR R0,[R2]
+        BL DELAY
+        STR R0,[R3]
+        BL DELAY
+        B BACK
+DELAY   ;subroutine
+        LDR R5,=0x2FFF
+up      SUBS R5,R5,#1;
+        BNE up
+        BX LR
+        END
+
+
+--------------------------------------------------------------------------------
+Q15. Arithmetic instructions: Addition, Subtraction, Bit complement
+                                               (same as Q9)       [SOFTWARE]
+     Manual ref: Expt 3, Prog 1 - OPTIMISED
+--------------------------------------------------------------------------------
+Optimisations vs manual: ONE LDMIA for operands, ONE STMIA for all 8 results,
+ADDS/SUBS give meaningful carry to ADC/SBC/RSC, MVN added for 1's complement.
+
+        AREA    ARITH, CODE, READONLY
+        ENTRY
+        ADR     R0, NUM1
+        LDMIA   R0, {R1, R2}        ; R1 = NUM1, R2 = NUM2 (one instruction)
+        LDR     R0, =RES            ; R0 -> result block (0x40000000)
+        ADDS    R3, R1, R2          ; R3  = R1 + R2          (sets C)
+        ADC     R4, R1, R2          ; R4  = R1 + R2 + C
+        SUBS    R5, R1, R2          ; R5  = R1 - R2          (sets C = NOT borrow)
+        SBC     R6, R1, R2          ; R6  = R1 - R2 + C - 1
+        RSB     R7, R1, R2          ; R7  = R2 - R1
+        RSC     R8, R1, R2          ; R8  = R2 - R1 + C - 1
+        BIC     R9, R1, R2          ; R9  = R1 AND (NOT R2)  (bit clear)
+        MVN     R10, R1             ; R10 = NOT R1           (bit complement)
+        STMIA   R0, {R3-R10}        ; store all 8 results, ONE instruction
+STOP    B       STOP
+NUM1    DCD     0xF7654321
+NUM2    DCD     0xF2345678
+
+        AREA    DATAMEM, DATA, READWRITE
+RES     SPACE   32                  ; 8 words at 0x40000000
+        END
+
+Result (from 0x40000000):
+  ADD = 0xE9999999 (C=1)   ADC = 0xE999999A
+  SUB = 0x0530ECA9 (C=1)   SBC = 0x0530ECA9
+  RSB = 0xFACF1357         RSC = 0xFACF1357
+  BIC = 0x05410101         MVN = 0x089ABCDE
+
+
+--------------------------------------------------------------------------------
+Q16. C program - up count with delay on LEDs using Timer          [HARDWARE]
+     Manual ref: Expt 9, Prog 1 - COPIED AS IS
+--------------------------------------------------------------------------------
+
+#include<lpc21xx.h>
+void delay(void);
+int main(void)
+{
+ unsigned long int c=0xFF0000;
+  IO0DIR = c;
+  VPBDIV=2;
+  T0MCR=(1<<0)|(1<<2);   //Generates interrupt and reset on match
+   T0MR0=1000000;          //Loading match register value
+   T0PR=29;                //Loading Prescalar register value
+
+  while(1)
+   {
+   IO0SET = c; // Turn ? LEDs
+        delay();
+        c-=0x10000;
+        IO0CLR = 0xfF0000; // Turn them ?
+   }
+}
+
+void delay(void)
+{
+
+   T0TCR=(1<<0);           //Starting Timer
+   while(!(T0IR&(1<<0)));//Waiting for interrupt
+   T0IR=(1<<0);          //Clearing interrupt
+   T0TCR=(1<<1);           //Reset Timer0
+}
+
+
+--------------------------------------------------------------------------------
+Q17. Data transfer with shift/rotate            (same as Q5)      [SOFTWARE]
+     Manual ref: Expt 1, Prog 5 - OPTIMISED
+--------------------------------------------------------------------------------
+Optimisations vs manual: every shift/rotate done by the barrel shifter in one
+MOV; ROL done as ROR #(32-n); MOVS gives a defined Carry for RRX; all results
+written with ONE STMIA.
+
+        AREA    SHIFTROT, CODE, READONLY
+        ENTRY
+        LDR     R0, NUM             ; take the number from memory
+        LDR     R8, =RES            ; R8 -> result block (0x40000000)
+        MOV     R1, R0, LSL #2      ; LSL #2 : R0 * 4
+        MOVS    R2, R0, LSR #1      ; LSR #1 : R0 / 2 (unsigned), C = bit0 of R0
+        MOV     R3, R0, ASR #1      ; ASR #1 : R0 / 2 (signed, sign preserved)
+        MOV     R4, R0, ROR #4      ; ROR #4 : rotate right by 4
+        MOV     R5, R0, ROR #28     ; ROL #4 : rotate LEFT by 4 (= ROR #28)
+        MOV     R6, R0, RRX         ; RRX    : rotate right 1 bit through Carry
+        STMIA   R8, {R0-R6}         ; store original + 6 results, ONE instruction
+STOP    B       STOP
+NUM     DCD     0x8000001F
+
+        AREA    DATAMEM, DATA, READWRITE
+RES     SPACE   28                  ; 7 words at 0x40000000
+        END
+
+Result (from 0x40000000):
+  0x8000001F (original), 0x0000007C (LSL#2), 0x4000000F (LSR#1),
+  0xC000000F (ASR#1),    0xF8000001 (ROR#4), 0x000001F8 (ROL#4),
+  0xC000000F (RRX, C=1)
+
+
+--------------------------------------------------------------------------------
+Q18. Internal DAC (10-bit) - ramp waveform                        [HARDWARE]
+     Manual ref: Expt 7, Prog 2 - COPIED AS IS
+--------------------------------------------------------------------------------
+
+PINSEL1 EQU 0XE002C004; register to configure P0.16-P0.31 for specific operation
+DACR    EQU 0XE006C000; DAC register address
+    AREA CHANG, CODE,READONLY
+    EXPORT __main  ;refer the line no 416 of startup.s file
+__main
+    ENTRY
+        LDR R0,=PINSEL1;
+        LDR R1,=DACR;
+        LDR R2,=0X00080000; P0.25 as DAC output
+        STR R2,[R0]
+BACK    MOV R4, R3,LSL#6
+        STR R4,[R1]
+        ADD R3,R3,#1
+        B BACK
+        END
+
+
+--------------------------------------------------------------------------------
+Q19. Check whether the number is even or odd    (same as Q3)      [SOFTWARE]
+     Manual ref: Expt 2, Prog 1 - OPTIMISED
+--------------------------------------------------------------------------------
+Optimisations / fixes vs manual: one ANDS tests the LSB and sets Z; MVNEQ makes
+0xFFFFFFFF without a literal load; fixes the manual's EVEN/ODD inversion
+(after LSR #1, Carry = LSB, so CS = ODD, not EVEN).
+
+        AREA    EVENODD, CODE, READONLY
+        ENTRY
+        LDR     R0, NUM             ; read the number from memory
+        ANDS    R1, R0, #1          ; R1 = LSB : 0 = EVEN, 1 = ODD  (Z=1 if EVEN)
+        MVNEQ   R2, #0              ; EVEN -> R2 = 0xFFFFFFFF
+        LDRNE   R2, =0x55555555     ; ODD  -> R2 = 0x55555555
+        LDR     R3, =RES
+        STR     R2, [R3]            ; result flag stored at 0x40000000
+STOP    B       STOP
+NUM     DCD     0x0000001B          ; number to test (27 -> ODD)
+
+        AREA    DATAMEM, DATA, READWRITE
+RES     DCD     0
+        END
+
+Result: NUM = 0x1B (odd)  -> R1 = 1, R2 = [0x40000000] = 0x55555555
+        NUM = 0x1A (even) -> R1 = 0, R2 = [0x40000000] = 0xFFFFFFFF
+
+
+--------------------------------------------------------------------------------
+Q20. C program - LED ON/OFF using External Hardware Interrupt 1   [HARDWARE]
+     Manual ref: Expt 10, Prog 1 - COPIED AS IS
+--------------------------------------------------------------------------------
+
+#include<lpc214x.h>
+void Extint1_Isr(void) __irq;   //declaration of ISR
+unsigned char int_flag=1;
+unsigned long int c= 0X02000000;
+int main(void)
+{   IO1DIR |=c;      //P1.25 output
+    IO1SET = c;
+    PINSEL0 =0X000000c0;    //P0.3 EINT1
+    EXTMODE = 0x02;     // falling egge trigger and active low
+    EXTPOLAR = 0X00;
+    VICVectAddr0 = (unsigned long) Extint1_Isr; // EINT1 ISR function name
+    VICVectCntl0 = 0x20 | 15;//EINT1 to interrupt priority 0
+    VICIntEnable |= 0x00008000;//Enable the EINT1 interrupt
+    while(1)            //looping for interrupt
+    {
+    if(int_flag == 0x01)
+       IO1SET = 0x02000000;
+       else
+       IO1CLR = 0X02000000;
+    }
+}
+void Extint1_Isr(void)__irq  //whenever there is a low edge on EINT0
+{
+    EXTINT = 0x02;      //clear the interrupt
+
+    VICVectAddr=0;//Acknowledge Interrupt
+     int_flag =~int_flag ;// complement the flag
+}
+
+================================================================================
+                                 END OF FILE
+================================================================================
+
